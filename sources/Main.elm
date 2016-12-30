@@ -16,6 +16,7 @@ type Msg = NextGeneration
   | ToggleCell Int Int
   | Tick Time
   | ToggleAutomatic
+  | ClearCells
 
 type alias Model = { cells : List Cell, generation : Int, automatic: Bool }
 
@@ -30,6 +31,7 @@ update msg model =
     NextGeneration ->
       advanceGeneration model ! []
     ToggleCell x y -> ({ model | cells = toggleCell model.cells x y }, Cmd.none)
+    ClearCells -> { model | cells = [] } ! []
 
 advanceGeneration model =
   { model |
@@ -66,6 +68,7 @@ view model =
       div []
         [ button [onClick NextGeneration] [text "Step"]
         , button [onClick ToggleAutomatic] [text automaticText]
+        , button [onClick ClearCells] [text "Clear"]
         , div [] [text (toString model.generation)]
         , div [] rows
         ]
