@@ -3,6 +3,9 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import GameOfLife exposing (nextGeneration, Cell)
 import Time exposing (Time, second)
+import Keyboard exposing (..)
+import Char exposing (..)
+import Debug exposing (..)
 
 main =
   Html.program
@@ -18,6 +21,7 @@ type Msg = NextGeneration
   | ToggleAutomatic
   | ClearCells
   | ChangeTickTime String
+  | KeyDown Int
 
 type alias Model = 
   { cells : List Cell
@@ -78,7 +82,7 @@ update msg model =
     ToggleCell x y ->
       { model | cells = toggleCell model.cells (x, y) } ! []
     ClearCells ->
-      { model | cells = [] } ! []
+      clear model ! []
     ChangeTickTime time ->
       { model |
         tickTime = time
@@ -86,6 +90,27 @@ update msg model =
           |> Result.withDefault 1.0
           |> (*) second
       } ! []
+    KeyDown code ->
+      let
+          keyName = Char.fromCode code
+          newModel = handleKeyDown model keyName
+      in
+          newModel ! []
+
+handleKeyDown model keyName =
+  case keyName of
+    'S' -> advanceGeneration model
+    'C' -> clear model
+    'X' -> adjustTickTime model 100
+    'Z' -> adjustTickTime model -100
+    _ -> model
+
+adjustTickTime model increment =
+    { model |
+      tickTime = clamp 100 2000 (model.tickTime + increment)
+    }
+
+clear model = { model | cells = [], generation = 1, automatic = False }
 
 advanceGeneration : Model -> Model
 advanceGeneration model =
@@ -103,11 +128,14 @@ toggleCell model cell =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  if model.automatic then
-    Time.every model.tickTime Tick
-  else
-    Sub.none
-
+  let
+      tickerSubs = 
+        if model.automatic then
+          [Time.every model.tickTime Tick]
+        else
+          []
+  in
+      Sub.batch <| [ Keyboard.downs KeyDown ] ++ tickerSubs
 
 view : Model -> Html Msg
 view model =
