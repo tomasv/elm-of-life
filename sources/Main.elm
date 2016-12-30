@@ -62,7 +62,10 @@ defaultCells =
   , (39, 0)
   ]
 
+defaultDimensions : GridDimensions
 defaultDimensions = (0, 10, 0, 10)
+
+init : (Model, Cmd Msg)
 init = 
     { cells = defaultCells
     , generation = 1
@@ -77,7 +80,7 @@ update msg model =
     ToggleAutomatic ->
       toggleAutomatic model ! []
     Tick _ ->
-      advanceGeneration model ! []
+      update NextGeneration model
     NextGeneration ->
       advanceGeneration model ! []
     ToggleCell x y ->
@@ -104,6 +107,7 @@ update msg model =
       in
           newModel ! []
 
+handleKeyDown : Model -> Char -> Model
 handleKeyDown model keyName =
   case keyName of
     'S' -> advanceGeneration model
@@ -113,30 +117,37 @@ handleKeyDown model keyName =
     'P' -> toggleAutomatic model
     _ -> model
 
+adjustTickTime : Model -> Float -> Model
 adjustTickTime model increment =
-    { model |
-      tickTime = clamp 100 2000 (model.tickTime + increment)
-    }
+  { model |
+    tickTime = clamp 100 2000 (model.tickTime + increment)
+  }
 
-clear model = { model | cells = [], generation = 1, automatic = False }
+clear : Model -> Model
+clear model =
+  { model |
+    cells = [],
+    generation = 1,
+    automatic = False
+  }
 
 advanceGeneration : Model -> Model
-advanceGeneration model =
+advanceGeneration ({cells, generation, gridDimensions} as model) =
   let
-      nextGenCells = nextGeneration model.cells
+      nextGenCells = nextGeneration cells
   in
       { model |
-        generation = model.generation + 1,
+        generation = generation + 1,
         cells = nextGenCells,
-        gridDimensions = dimensions nextGenCells model.gridDimensions
+        gridDimensions = dimensions nextGenCells gridDimensions
       }
 
 toggleCell : List Cell -> Cell -> List Cell
-toggleCell model cell =
-  if List.member cell model then
-    List.filter (\aliveCell -> aliveCell /= cell) model
+toggleCell aliveCells cell =
+  if List.member cell aliveCells then
+    List.filter (\aliveCell -> aliveCell /= cell) aliveCells
   else
-    [cell] ++ model
+    cell :: aliveCells
 
 toggleAutomatic : Model -> Model
 toggleAutomatic model =
@@ -150,8 +161,9 @@ subscriptions model =
           [Time.every model.tickTime Tick]
         else
           []
+      subs = [ Keyboard.downs KeyDown ] ++ tickerSubs
   in
-      Sub.batch <| [ Keyboard.downs KeyDown ] ++ tickerSubs
+      Sub.batch subs
 
 view : Model -> Html Msg
 view model =
@@ -170,10 +182,10 @@ view model =
         ]
 
 slider : Model -> Html Msg
-slider model =
+slider {tickTime} =
   let
       timeText =
-        model.tickTime
+        tickTime
         |> Time.inSeconds
         |> toString
 
@@ -222,42 +234,47 @@ createColumn cell =
       div [onClick (ToggleCell x y), cellStyle] []
 
 grid : Model -> List (List GridCell)
-grid model =
+grid {gridDimensions, cells} =
   let
-      (minX, maxX, minY, maxY) = model.gridDimensions
+      (minX, maxX, minY, maxY) = gridDimensions
       rows = List.range minY maxY
       columns = List.range minX maxX
   in
-      List.map (\y -> List.map (\x -> createGridCell (x, y) model.cells) columns) rows
+      List.map (\y -> List.map (\x -> createGridCell (x, y) cells) columns) rows
 
 type alias GridDimensions = (Int, Int, Int, Int)
 
 dimensions : List Cell -> GridDimensions -> GridDimensions
-dimensions cells oldGridDimensions =
+dimensions cells (oldMinX, oldMaxX, oldMinY, oldMaxY) =
   let
-      (oldMinX, oldMaxX, oldMinY, oldMaxY) = oldGridDimensions
       (xs, ys) = List.unzip cells
       padding = 4
-      maxX = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) xs
-      minX = snappingPadding (negate padding) <| (Maybe.withDefault 0 << List.minimum) xs
-      maxY = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) ys
-      minY = snappingPadding (negate padding) <| (Maybe.withDefault 0 << List.minimum) ys
+      maxX = adjustPadding xs 10 oldMaxX padding
+      maxY = adjustPadding ys 10 oldMaxY padding
+      minX = adjustPadding xs 0 oldMinX (negate padding)
+      minY = adjustPadding ys 0 oldMinY (negate padding)
   in
-      ( Basics.min oldMinX minX
-      , Basics.max oldMaxX maxX
-      , Basics.min oldMinY minY
-      , Basics.max oldMaxY maxY
-      )
+      ( minX, maxX, minY, maxY )
 
-snappingPadding step value =
+adjustPadding : List Int -> Int -> Int -> Int -> Int
+adjustPadding xs default old padding =
+  let
+      selectionCriteria = if padding >= 0 then List.maximum else List.minimum
+      comparisonWith = if padding >= 0 then Basics.max else Basics.min
+  in
+      xs 
+        |> selectionCriteria
+        |> Maybe.withDefault default
+        |> snapPadding padding
+        |> comparisonWith old
+
+snapPadding : Int -> Int -> Int
+snapPadding step value =
   value // (abs step) * (abs step) + step
       
 createGridCell : Cell -> List Cell -> GridCell
-createGridCell cell aliveCells =
-  let
-      (x, y) = cell
-  in
-      if List.member cell aliveCells then
-        AliveCell x y
-      else
-        DeadCell x y
+createGridCell ((x, y) as cell) aliveCells =
+  if List.member cell aliveCells then
+    AliveCell x y
+  else
+    DeadCell x y
