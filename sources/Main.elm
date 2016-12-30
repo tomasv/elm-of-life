@@ -17,10 +17,21 @@ type Msg = NextGeneration
   | Tick Time
   | ToggleAutomatic
   | ClearCells
+  | ChangeTickTime String
 
-type alias Model = { cells : List Cell, generation : Int, automatic: Bool }
+type alias Model = 
+  { cells : List Cell
+  , generation : Int
+  , automatic: Bool
+  , tickTime : Time
+  }
 
-init = { cells = [(0, 1), (1, 1), (2, 1)], generation = 1, automatic = False } ! []
+init = 
+    { cells = [(0, 1), (1, 1), (2, 1)]
+    , generation = 1
+    , automatic = False
+    , tickTime = second
+    } ! []
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -32,6 +43,13 @@ update msg model =
       advanceGeneration model ! []
     ToggleCell x y -> ({ model | cells = toggleCell model.cells x y }, Cmd.none)
     ClearCells -> { model | cells = [] } ! []
+    ChangeTickTime time ->
+      { model |
+        tickTime = time
+          |> String.toFloat
+          |> Result.withDefault 1.0
+          |> (*) second
+      } ! []
 
 advanceGeneration model =
   { model |
@@ -42,7 +60,7 @@ advanceGeneration model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
   if model.automatic then
-    Time.every second Tick
+    Time.every model.tickTime Tick
   else
     Sub.none
 
@@ -69,8 +87,31 @@ view model =
         [ button [onClick NextGeneration] [text "Step"]
         , button [onClick ToggleAutomatic] [text automaticText]
         , button [onClick ClearCells] [text "Clear"]
+        , slider model
         , div [] [text (toString model.generation)]
         , div [] rows
+        ]
+
+slider : Model -> Html Msg
+slider model =
+  let
+      timeText =
+        model.tickTime
+        |> Time.inSeconds
+        |> toString
+
+      attributes = 
+        [ type_ "range"
+        , value timeText
+        , Html.Attributes.min "0.1"
+        , Html.Attributes.max "2"
+        , step "0.1"
+        , onInput ChangeTickTime
+        ]
+  in
+      div []
+        [ input attributes []
+        , text timeText
         ]
 
 createRows : List (List GridCell) -> List (Html Msg)
