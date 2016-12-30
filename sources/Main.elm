@@ -74,7 +74,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     ToggleAutomatic ->
-      { model | automatic = not model.automatic } ! []
+      toggleAutomatic model ! []
     Tick _ ->
       advanceGeneration model ! []
     NextGeneration ->
@@ -103,6 +103,7 @@ handleKeyDown model keyName =
     'C' -> clear model
     'X' -> adjustTickTime model 100
     'Z' -> adjustTickTime model -100
+    'P' -> toggleAutomatic model
     _ -> model
 
 adjustTickTime model increment =
@@ -125,6 +126,10 @@ toggleCell model cell =
     List.filter (\aliveCell -> aliveCell /= cell) model
   else
     [cell] ++ model
+
+toggleAutomatic : Model -> Model
+toggleAutomatic model =
+  { model | automatic = not model.automatic }
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
