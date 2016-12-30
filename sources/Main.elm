@@ -115,14 +115,17 @@ type alias GridDimensions = (Int, Int, Int, Int)
 dimensions : List Cell -> GridDimensions
 dimensions model =
   let
-      padding = 5
       (xs, ys) = List.unzip model
-      maxX = (Maybe.withDefault 10 << List.maximum) xs
-      minX = (Maybe.withDefault 10 << List.minimum) xs
-      maxY = (Maybe.withDefault 10 << List.maximum) ys
-      minY = (Maybe.withDefault 10 << List.minimum) ys
+      padding = 4
+      maxX = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) xs
+      minX = snappingPadding (negate padding) <| (Maybe.withDefault 10 << List.minimum) xs
+      maxY = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) ys
+      minY = snappingPadding (negate padding) <| (Maybe.withDefault 10 << List.minimum) ys
   in
-      (-10, maxX + padding, -10, maxY + padding)
+      (minX, maxX, minY, maxY)
+
+snappingPadding step value =
+  value // (abs step) * (abs step) + step
       
 createGridCell : Cell -> List Cell -> GridCell
 createGridCell cell aliveCells =
