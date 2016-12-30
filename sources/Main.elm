@@ -14,13 +14,19 @@ main =
 type Msg = NextGeneration
   | ToggleCell Int Int
 
-init = [(0, 1), (1, 1), (2, 1)] ! []
+type alias Model = { cells : List Cell, generation : Int }
 
-update : Msg -> List Cell -> (List Cell, Cmd Msg)
+init = { cells = [(0, 1), (1, 1), (2, 1)], generation = 1 } ! []
+
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    NextGeneration -> (nextGeneration model, Cmd.none)
-    ToggleCell x y -> (toggleCell model x y, Cmd.none)
+    NextGeneration ->
+      { model |
+        generation = model.generation + 1,
+        cells = nextGeneration model.cells
+      } ! []
+    ToggleCell x y -> ({ model | cells = toggleCell model.cells x y }, Cmd.none)
 
 subscriptions model =
   Sub.none
@@ -36,14 +42,16 @@ toggleCell model x y =
       else
         [cell] ++ model
 
-view : List Cell -> Html Msg
+view : Model -> Html Msg
 view model =
   let
-      cellGrid = grid model
+      cells = model.cells
+      cellGrid = grid cells
       rows = createRows cellGrid
   in
       div []
         [ button [onClick NextGeneration] [text "Step"]
+        , div [] [text (toString model.generation)]
         , div [] rows
         ]
 
