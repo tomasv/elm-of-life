@@ -2,6 +2,7 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import GameOfLife exposing (nextGeneration, Cell)
+import Time exposing (Time, second)
 
 main =
   Html.program
@@ -13,23 +14,35 @@ main =
 
 type Msg = NextGeneration
   | ToggleCell Int Int
+  | Tick Time
+  | ToggleAutomatic
 
-type alias Model = { cells : List Cell, generation : Int }
+type alias Model = { cells : List Cell, generation : Int, automatic: Bool }
 
-init = { cells = [(0, 1), (1, 1), (2, 1)], generation = 1 } ! []
+init = { cells = [(0, 1), (1, 1), (2, 1)], generation = 1, automatic = False } ! []
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
+    ToggleAutomatic -> { model | automatic = not model.automatic } ! []
+    Tick _ ->
+      advanceGeneration model ! []
     NextGeneration ->
-      { model |
-        generation = model.generation + 1,
-        cells = nextGeneration model.cells
-      } ! []
+      advanceGeneration model ! []
     ToggleCell x y -> ({ model | cells = toggleCell model.cells x y }, Cmd.none)
 
+advanceGeneration model =
+  { model |
+    generation = model.generation + 1,
+    cells = nextGeneration model.cells
+  }
+
+subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  if model.automatic then
+    Time.every second Tick
+  else
+    Sub.none
 
 type GridCell = AliveCell Int Int | DeadCell Int Int
 
@@ -48,9 +61,11 @@ view model =
       cells = model.cells
       cellGrid = grid cells
       rows = createRows cellGrid
+      automaticText = if model.automatic then "Stop" else "Start"
   in
       div []
         [ button [onClick NextGeneration] [text "Step"]
+        , button [onClick ToggleAutomatic] [text automaticText]
         , div [] [text (toString model.generation)]
         , div [] rows
         ]
