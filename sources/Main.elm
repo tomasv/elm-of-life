@@ -7,14 +7,6 @@ import Keyboard exposing (..)
 import Char exposing (..)
 import Debug exposing (..)
 
-main =
-  Html.program
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
-
 type Msg = NextGeneration
   | ToggleCell Int Int
   | Tick Time
@@ -31,6 +23,19 @@ type alias Model =
   , gridDimensions : GridDimensions
   }
 
+type alias GridDimensions = (Int, Int, Int, Int)
+
+type GridCell = AliveCell Int Int | DeadCell Int Int
+
+main =
+  Html.program
+    { init = init
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    }
+
+defaultCells : List Cell
 defaultCells =
   [ (1, 0)
   , (2, 0)
@@ -107,6 +112,11 @@ update msg model =
       in
           newModel ! []
 
+
+toggleAutomatic : Model -> Model
+toggleAutomatic model =
+  { model | automatic = not model.automatic }
+
 handleKeyDown : Model -> Char -> Model
 handleKeyDown model keyName =
   case keyName of
@@ -149,10 +159,6 @@ toggleCell aliveCells cell =
   else
     cell :: aliveCells
 
-toggleAutomatic : Model -> Model
-toggleAutomatic model =
-  { model | automatic = not model.automatic }
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
   let
@@ -168,16 +174,15 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   let
-      cellGrid = grid model
-      rows = createRows cellGrid
+      rows = createRows model
       automaticText = if model.automatic then "Stop" else "Start"
   in
       div []
-        [ button [onClick NextGeneration] [text "Step"]
+        [ div [] [ strong [] [text <| "Generation: " ++ (toString model.generation)] ]
+        , button [onClick NextGeneration] [text "Step"]
         , button [onClick ToggleAutomatic] [text automaticText]
         , button [onClick ClearCells] [text "Clear"]
         , slider model
-        , div [] [text (toString model.generation)]
         , div [] rows
         ]
 
@@ -203,23 +208,27 @@ slider {tickTime} =
         , text timeText
         ]
 
-type GridCell = AliveCell Int Int | DeadCell Int Int
-
-createRows : List (List GridCell) -> List (Html Msg)
-createRows grid =
-  List.map (createColumns) grid
-
-createColumns : List GridCell -> Html Msg
-createColumns row =
+createRows : Model -> List (Html Msg)
+createRows ({gridDimensions, cells} as model) =
   let
-      columns = List.map (createColumn) row
+      (minX, maxX, minY, maxY) = gridDimensions
+      rowRange = List.range minY maxY
+      columnRange = List.range minX maxX
+  in
+      List.map (createRow columnRange cells) rowRange
+
+createRow : List Int -> List Cell -> Int -> Html Msg
+createRow columnRange cells y =
+  let
+      columns = List.map (createCell cells y) columnRange
       styles = style [("display", "inline-block")]
   in
       div [class "row", styles] columns
 
-createColumn : GridCell -> Html Msg
-createColumn cell = 
+createCell : List Cell -> Int -> Int -> Html Msg
+createCell cells y x = 
   let
+      isAlive = List.member (x, y) cells
       commonStyles =
         [ ("width", "10px")
         , ("height", "10px")
@@ -227,22 +236,9 @@ createColumn cell =
         ]
       aliveStyle = style (commonStyles ++ [("background-color", "black")])
       deadStyle = style (commonStyles ++ [("brackground-color", "white")])
-      (x, y, cellStyle) = case cell of
-        AliveCell x y -> (x, y, aliveStyle)
-        DeadCell x y -> (x, y, deadStyle)
+      cellStyle = if isAlive then aliveStyle else deadStyle
   in
       div [onClick (ToggleCell x y), cellStyle] []
-
-grid : Model -> List (List GridCell)
-grid {gridDimensions, cells} =
-  let
-      (minX, maxX, minY, maxY) = gridDimensions
-      rows = List.range minY maxY
-      columns = List.range minX maxX
-  in
-      List.map (\y -> List.map (\x -> createGridCell (x, y) cells) columns) rows
-
-type alias GridDimensions = (Int, Int, Int, Int)
 
 dimensions : List Cell -> GridDimensions -> GridDimensions
 dimensions cells (oldMinX, oldMaxX, oldMinY, oldMaxY) =
@@ -271,10 +267,3 @@ adjustPadding xs default old padding =
 snapPadding : Int -> Int -> Int
 snapPadding step value =
   value // (abs step) * (abs step) + step
-      
-createGridCell : Cell -> List Cell -> GridCell
-createGridCell ((x, y) as cell) aliveCells =
-  if List.member cell aliveCells then
-    AliveCell x y
-  else
-    DeadCell x y
