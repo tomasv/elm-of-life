@@ -69,13 +69,16 @@ init =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    ToggleAutomatic -> { model | automatic = not model.automatic } ! []
+    ToggleAutomatic ->
+      { model | automatic = not model.automatic } ! []
     Tick _ ->
       advanceGeneration model ! []
     NextGeneration ->
       advanceGeneration model ! []
-    ToggleCell x y -> ({ model | cells = toggleCell model.cells x y }, Cmd.none)
-    ClearCells -> { model | cells = [] } ! []
+    ToggleCell x y ->
+      { model | cells = toggleCell model.cells (x, y) } ! []
+    ClearCells ->
+      { model | cells = [] } ! []
     ChangeTickTime time ->
       { model |
         tickTime = time
@@ -84,11 +87,19 @@ update msg model =
           |> (*) second
       } ! []
 
+advanceGeneration : Model -> Model
 advanceGeneration model =
   { model |
     generation = model.generation + 1,
     cells = nextGeneration model.cells
   }
+
+toggleCell : List Cell -> Cell -> List Cell
+toggleCell model cell =
+  if List.member cell model then
+    List.filter (\aliveCell -> aliveCell /= cell) model
+  else
+    [cell] ++ model
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -97,16 +108,6 @@ subscriptions model =
   else
     Sub.none
 
-type GridCell = AliveCell Int Int | DeadCell Int Int
-
-toggleCell model x y =
-  let
-      cell = (x, y)
-  in
-      if List.member cell model then
-        List.filter (\aliveCell -> aliveCell /= cell) model
-      else
-        [cell] ++ model
 
 view : Model -> Html Msg
 view model =
@@ -146,6 +147,8 @@ slider model =
         [ input attributes []
         , text timeText
         ]
+
+type GridCell = AliveCell Int Int | DeadCell Int Int
 
 createRows : List (List GridCell) -> List (Html Msg)
 createRows grid =
