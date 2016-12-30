@@ -1,6 +1,6 @@
 module GameOfLife exposing (nextGeneration, Cell)
 
-import Set exposing (..)
+import Dict exposing (Dict)
 
 -- Rules of Conways Game of Life
 
@@ -13,11 +13,12 @@ import Set exposing (..)
 type alias Cell = (Int, Int)
 
 nextGeneration : List Cell -> List Cell
-nextGeneration model =
-  let
-      candidateCells = model ++ (List.concatMap (neighbours) model)
-  in
-      uniq (List.filterMap (aliveOrDead model) candidateCells)
+nextGeneration aliveCells =
+  aliveCells
+    |> List.concatMap (neighbours)
+    |> List.foldl (count) Dict.empty
+    |> Dict.filter (isAlive aliveCells)
+    |> Dict.keys
 
 neighbours : Cell -> List Cell
 neighbours (x, y) = 
@@ -26,21 +27,16 @@ neighbours (x, y) =
   , (x - 1, y - 1), (x    , y - 1), (x + 1, y - 1)
   ]
 
-aliveOrDead : List Cell -> Cell -> Maybe Cell
-aliveOrDead aliveCells candidate =
-  let
-      neighbourCells = neighbours candidate
-      liveNeighbours = intersection aliveCells neighbourCells
-      liveCount = List.length liveNeighbours
-      isDead = not (List.member candidate aliveCells)
-  in
-      if liveCount < 2 || liveCount > 3 || (isDead && liveCount == 2) then
-        Nothing
-      else
-        Just candidate
+isAlive : List Cell -> Cell -> Int -> Bool
+isAlive aliveCells cell liveCount =
+  (liveCount == 3) || ((liveCount == 2) && (List.member cell aliveCells))
 
-intersection : List Cell -> List Cell -> List Cell
-intersection a b = Set.toList (Set.intersect (Set.fromList a) (Set.fromList b))
+count : Cell -> Dict Cell Int -> Dict Cell Int
+count key freqs =
+  Dict.update key (increment) freqs
 
-uniq : List Cell -> List Cell
-uniq a = Set.toList (Set.fromList a)
+increment : Maybe Int -> Maybe Int
+increment value =
+    case value of
+      Just x -> Just (x + 1)
+      Nothing -> Just 1
