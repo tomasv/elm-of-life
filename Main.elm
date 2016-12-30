@@ -12,6 +12,7 @@ main =
     }
 
 type Msg = NextGeneration
+  | ToggleCell Int Int
 
 init = [(0, 1), (1, 1), (2, 1)] ! []
 
@@ -19,11 +20,21 @@ update : Msg -> List Cell -> (List Cell, Cmd Msg)
 update msg model =
   case msg of
     NextGeneration -> (nextGeneration model, Cmd.none)
+    ToggleCell x y -> (toggleCell model x y, Cmd.none)
 
 subscriptions model =
   Sub.none
 
 type GridCell = AliveCell Int Int | DeadCell Int Int
+
+toggleCell model x y =
+  let
+      cell = (x, y)
+  in
+      if List.member cell model then
+        List.filter (\aliveCell -> aliveCell /= cell) model
+      else
+        [cell] ++ model
 
 view : List Cell -> Html Msg
 view model =
@@ -32,16 +43,15 @@ view model =
       rows = createRows cellGrid
   in
       div []
-        [ div [] [text (toString model)]
-        , button [onClick NextGeneration] [text "Step"]
+        [ button [onClick NextGeneration] [text "Step"]
         , div [] rows
         ]
 
-createRows : List (List GridCell) -> List (Html msg)
+createRows : List (List GridCell) -> List (Html Msg)
 createRows grid =
   List.map (createColumns) grid
 
-createColumns : List GridCell -> Html msg
+createColumns : List GridCell -> Html Msg
 createColumns row =
   let
       columns = List.map (createColumn) row
@@ -49,7 +59,7 @@ createColumns row =
   in
       div [class "row", styles] columns
 
-createColumn : GridCell -> Html msg
+createColumn : GridCell -> Html Msg
 createColumn cell = 
   let
       commonStyles =
@@ -63,7 +73,7 @@ createColumn cell =
         AliveCell x y -> (x, y, aliveStyle)
         DeadCell x y -> (x, y, deadStyle)
   in
-      div [cellStyle] []
+      div [onClick (ToggleCell x y), cellStyle] []
 
 grid : List Cell -> List (List GridCell)
 grid model =
