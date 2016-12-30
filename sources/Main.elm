@@ -28,46 +28,47 @@ type alias Model =
   , generation : Int
   , automatic: Bool
   , tickTime : Time
+  , gridDimensions : GridDimensions
   }
 
+defaultCells =
+  [ (1, 0)
+  , (2, 0)
+  , (3, 0)
+  , (4, 0)
+  , (5, 0)
+  , (6, 0)
+  , (7, 0)
+  , (8, 0)
+  , (10, 0)
+  , (11, 0)
+  , (12, 0)
+  , (13, 0)
+  , (14, 0)
+  , (18, 0)
+  , (19, 0)
+  , (20, 0)
+  , (27, 0)
+  , (28, 0)
+  , (29, 0)
+  , (30, 0)
+  , (31, 0)
+  , (32, 0)
+  , (33, 0)
+  , (35, 0)
+  , (36, 0)
+  , (37, 0)
+  , (38, 0)
+  , (39, 0)
+  ]
+
+defaultDimensions = (0, 10, 0, 10)
 init = 
-    { cells =
-      [ (1, 0)
-      , (2, 0)
-      , (3, 0)
-      , (4, 0)
-      , (5, 0)
-      , (6, 0)
-      , (7, 0)
-      , (8, 0)
-
-      , (10, 0)
-      , (11, 0)
-      , (12, 0)
-      , (13, 0)
-      , (14, 0)
-
-      , (18, 0)
-      , (19, 0)
-      , (20, 0)
-
-      , (27, 0)
-      , (28, 0)
-      , (29, 0)
-      , (30, 0)
-      , (31, 0)
-      , (32, 0)
-      , (33, 0)
-
-      , (35, 0)
-      , (36, 0)
-      , (37, 0)
-      , (38, 0)
-      , (39, 0)
-      ]
+    { cells = defaultCells
     , generation = 1
     , automatic = False
     , tickTime = second
+    , gridDimensions = dimensions defaultCells defaultDimensions
     } ! []
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -80,7 +81,13 @@ update msg model =
     NextGeneration ->
       advanceGeneration model ! []
     ToggleCell x y ->
-      { model | cells = toggleCell model.cells (x, y) } ! []
+      let
+          newCells = toggleCell model.cells (x, y)
+      in
+          { model |
+            cells = newCells,
+            gridDimensions = dimensions newCells model.gridDimensions
+          } ! []
     ClearCells ->
       clear model ! []
     ChangeTickTime time ->
@@ -115,10 +122,14 @@ clear model = { model | cells = [], generation = 1, automatic = False }
 
 advanceGeneration : Model -> Model
 advanceGeneration model =
-  { model |
-    generation = model.generation + 1,
-    cells = nextGeneration model.cells
-  }
+  let
+      nextGenCells = nextGeneration model.cells
+  in
+      { model |
+        generation = model.generation + 1,
+        cells = nextGenCells,
+        gridDimensions = dimensions nextGenCells model.gridDimensions
+      }
 
 toggleCell : List Cell -> Cell -> List Cell
 toggleCell model cell =
@@ -145,8 +156,7 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   let
-      cells = model.cells
-      cellGrid = grid cells
+      cellGrid = grid model
       rows = createRows cellGrid
       automaticText = if model.automatic then "Stop" else "Start"
   in
@@ -211,28 +221,33 @@ createColumn cell =
   in
       div [onClick (ToggleCell x y), cellStyle] []
 
-grid : List Cell -> List (List GridCell)
+grid : Model -> List (List GridCell)
 grid model =
   let
-      (minX, maxX, minY, maxY) = dimensions model
+      (minX, maxX, minY, maxY) = model.gridDimensions
       rows = List.range minY maxY
       columns = List.range minX maxX
   in
-      List.map (\y -> List.map (\x -> createGridCell (x, y) model) columns) rows
+      List.map (\y -> List.map (\x -> createGridCell (x, y) model.cells) columns) rows
 
 type alias GridDimensions = (Int, Int, Int, Int)
 
-dimensions : List Cell -> GridDimensions
-dimensions model =
+dimensions : List Cell -> GridDimensions -> GridDimensions
+dimensions cells oldGridDimensions =
   let
-      (xs, ys) = List.unzip model
+      (oldMinX, oldMaxX, oldMinY, oldMaxY) = oldGridDimensions
+      (xs, ys) = List.unzip cells
       padding = 4
       maxX = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) xs
-      minX = snappingPadding (negate padding) <| (Maybe.withDefault 10 << List.minimum) xs
+      minX = snappingPadding (negate padding) <| (Maybe.withDefault 0 << List.minimum) xs
       maxY = snappingPadding padding <| (Maybe.withDefault 10 << List.maximum) ys
-      minY = snappingPadding (negate padding) <| (Maybe.withDefault 10 << List.minimum) ys
+      minY = snappingPadding (negate padding) <| (Maybe.withDefault 0 << List.minimum) ys
   in
-      (minX, maxX, minY, maxY)
+      ( Basics.min oldMinX minX
+      , Basics.max oldMaxX maxX
+      , Basics.min oldMinY minY
+      , Basics.max oldMaxY maxY
+      )
 
 snappingPadding step value =
   value // (abs step) * (abs step) + step
