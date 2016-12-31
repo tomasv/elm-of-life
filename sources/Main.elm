@@ -2,7 +2,7 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import GameOfLife exposing (nextGeneration, Cell)
-import Time exposing (Time, second)
+import Time exposing (Time)
 import Keyboard exposing (..)
 import Char exposing (..)
 import Debug exposing (..)
@@ -25,7 +25,7 @@ type alias Model =
 
 type alias GridDimensions = (Int, Int, Int, Int)
 
-type GridCell = AliveCell Int Int | DeadCell Int Int
+type SliderStep = SliderUp | SliderDown
 
 main =
   Html.program
@@ -75,7 +75,7 @@ init =
     { cells = defaultCells
     , generation = 1
     , automatic = False
-    , tickTime = second
+    , tickTime = sliderConfig.default * Time.second
     , gridDimensions = dimensions defaultCells defaultDimensions
     } ! []
 
@@ -102,8 +102,8 @@ update msg model =
       { model |
         tickTime = time
           |> String.toFloat
-          |> Result.withDefault 1.0
-          |> (*) second
+          |> Result.withDefault sliderConfig.default
+          |> (*) Time.second
       } ! []
     KeyDown code ->
       let
@@ -122,15 +122,31 @@ handleKeyDown model keyName =
   case keyName of
     'S' -> advanceGeneration model
     'C' -> clear model
-    'X' -> adjustTickTime model 100
-    'Z' -> adjustTickTime model -100
+    'X' -> adjustTickTime model SliderUp
+    'Z' -> adjustTickTime model SliderDown
     'P' -> toggleAutomatic model
     _ -> model
 
-adjustTickTime : Model -> Float -> Model
-adjustTickTime model increment =
-  { model |
-    tickTime = clamp 100 2000 (model.tickTime + increment)
+adjustTickTime : Model -> SliderStep -> Model
+adjustTickTime model step =
+  let
+      minimum = sliderConfig.min * Time.second
+      maximum = sliderConfig.max * Time.second
+      increment = sliderConfig.step * Time.second
+      delta = 
+        case step of
+          SliderUp -> increment
+          SliderDown -> negate increment
+  in
+      { model |
+        tickTime = clamp minimum maximum (model.tickTime + delta)
+      }
+
+sliderConfig =
+  { min = 0.1
+  , max = 2.0
+  , step = 0.1
+  , default = 1.0
   }
 
 clear : Model -> Model
@@ -197,9 +213,9 @@ slider {tickTime} =
       attributes = 
         [ type_ "range"
         , value timeText
-        , Html.Attributes.min "0.1"
-        , Html.Attributes.max "2"
-        , step "0.1"
+        , Html.Attributes.min (toString sliderConfig.min)
+        , Html.Attributes.max (toString sliderConfig.max)
+        , step (toString sliderConfig.step)
         , onInput ChangeTickTime
         ]
   in
