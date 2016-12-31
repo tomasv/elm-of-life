@@ -3,10 +3,11 @@ module Main exposing (main)
 import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
-import GameOfLife exposing (nextGeneration, Cell)
-import Time exposing (Time)
 import Keyboard
 import Char
+import Time exposing (Time)
+
+import GameOfLife exposing (nextGeneration, Cell)
 
 type Msg = NextGeneration
   | ToggleCell Int Int
@@ -70,6 +71,13 @@ defaultCells =
 
 defaultDimensions : GridDimensions
 defaultDimensions = (0, 10, 0, 10)
+
+sliderConfig =
+  { min = 0.1
+  , max = 2.0
+  , step = 0.1
+  , default = 1.0
+  }
 
 init : (Model, Cmd Msg)
 init = 
@@ -142,13 +150,6 @@ adjustTickTime model step =
       { model |
         tickTime = clamp minimum maximum (model.tickTime + delta)
       }
-
-sliderConfig =
-  { min = 0.1
-  , max = 2.0
-  , step = 0.1
-  , default = 1.0
-  }
 
 clear : Model -> Model
 clear model =
