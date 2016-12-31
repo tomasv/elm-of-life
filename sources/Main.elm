@@ -6,6 +6,7 @@ import Html.Attributes exposing (..)
 import Keyboard
 import Char
 import Time exposing (Time)
+import Random
 
 import GameOfLife exposing (nextGeneration, Cell)
 
@@ -16,6 +17,8 @@ type Msg = NextGeneration
   | ClearCells
   | ChangeTickTime String
   | KeyDown Int
+  | Randomize
+  | FillRandomly (List Cell)
 
 type alias Model = 
   { cells : List Cell
@@ -121,6 +124,20 @@ update msg model =
       in
           newModel ! []
 
+    Randomize ->
+      model ! [Random.generate FillRandomly cellGenerator]
+
+    FillRandomly cells ->
+      { model |
+        cells = cells,
+        gridDimensions = dimensions cells model.gridDimensions,
+        generation = 1,
+        automatic = False
+      } ! []
+
+cellGenerator : Random.Generator (List Cell)
+cellGenerator =
+    Random.list 50 <| Random.pair (Random.int 0 20) (Random.int 0 20)
 
 toggleAutomatic : Model -> Model
 toggleAutomatic model =
@@ -200,6 +217,7 @@ view model =
         , button [onClick NextGeneration] [text "Step"]
         , button [onClick ToggleAutomatic] [text automaticText]
         , button [onClick ClearCells] [text "Clear"]
+        , button [onClick Randomize] [text "Randomize"]
         , slider model
         , div [] rows
         ]
