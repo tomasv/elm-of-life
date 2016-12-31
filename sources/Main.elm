@@ -120,12 +120,11 @@ update msg model =
     KeyDown code ->
       let
           keyName = Char.fromCode code
-          newModel = handleKeyDown model keyName
       in
-          newModel ! []
+          handleKeyDown model keyName
 
     Randomize ->
-      model ! [Random.generate FillRandomly cellGenerator]
+      model ! [randomizeCmd]
 
     FillRandomly cells ->
       { model |
@@ -135,6 +134,9 @@ update msg model =
         automatic = False
       } ! []
 
+randomizeCmd : Cmd Msg
+randomizeCmd = Random.generate FillRandomly cellGenerator
+
 cellGenerator : Random.Generator (List Cell)
 cellGenerator =
     Random.list 50 <| Random.pair (Random.int 0 20) (Random.int 0 20)
@@ -143,15 +145,16 @@ toggleAutomatic : Model -> Model
 toggleAutomatic model =
   { model | automatic = not model.automatic }
 
-handleKeyDown : Model -> Char -> Model
+handleKeyDown : Model -> Char -> (Model, Cmd Msg)
 handleKeyDown model keyName =
   case keyName of
-    'S' -> advanceGeneration model
-    'C' -> clear model
-    'X' -> adjustTickTime model SliderUp
-    'Z' -> adjustTickTime model SliderDown
-    'P' -> toggleAutomatic model
-    _ -> model
+    'S' -> update NextGeneration model
+    'C' -> update ClearCells model
+    'X' -> adjustTickTime model SliderUp ! []
+    'Z' -> adjustTickTime model SliderDown ! []
+    'P' -> update ToggleAutomatic model
+    'R' -> update Randomize model
+    _ -> model ! []
 
 adjustTickTime : Model -> SliderStep -> Model
 adjustTickTime model step =
