@@ -3,9 +3,8 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import GameOfLife exposing (nextGeneration, Cell)
 import Time exposing (Time)
-import Keyboard exposing (..)
-import Char exposing (..)
-import Debug exposing (..)
+import Keyboard
+import Char
 
 type Msg = NextGeneration
   | ToggleCell Int Int
