@@ -15,8 +15,8 @@ type alias Cell = (Int, Int)
 nextGeneration : List Cell -> List Cell
 nextGeneration aliveCells =
   aliveCells
-    |> List.concatMap (neighbours)
-    |> List.foldl (count) Dict.empty
+    |> List.concatMap neighbours
+    |> List.foldl count Dict.empty
     |> Dict.filter (isAlive aliveCells)
     |> Dict.keys
 
@@ -33,7 +33,7 @@ isAlive aliveCells cell liveCount =
 
 count : Cell -> Dict Cell Int -> Dict Cell Int
 count key freqs =
-  Dict.update key (increment) freqs
+  Dict.update key increment freqs
 
 increment : Maybe Int -> Maybe Int
 increment value =
