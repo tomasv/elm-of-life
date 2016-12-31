@@ -130,7 +130,7 @@ update msg model =
     FillRandomly cells ->
       { model |
         cells = cells,
-        gridDimensions = dimensions cells model.gridDimensions,
+        gridDimensions = dimensions cells defaultDimensions,
         generation = 1,
         automatic = False
       } ! []
@@ -173,6 +173,7 @@ clear model =
   { model |
     cells = [],
     generation = 1,
+    gridDimensions = dimensions [] defaultDimensions,
     automatic = False
   }
 
